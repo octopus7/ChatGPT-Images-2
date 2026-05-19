@@ -1,8 +1,23 @@
+---
+name: image-detail-denoise
+description: "Use when Codex needs to reduce tiny speckles, glitter-like dots, sparkly artifacts, noisy micro-shading, peppered highlights, grainy texture, or busy small light-and-shadow variations in an existing image while preserving composition, character identity, pose, and style. This skill requires imagegen / built-in image generation or image editing for the actual denoise result; do not replace the result with local filters, scripts, C#, Python, PIL, ImageMagick, ffmpeg, or other deterministic image processing."
+---
+
 # Image Detail Denoise Skill
 
 ## Skill Path
 
 `skills/image-detail-denoise/SKILL.md`
+
+## Mandatory Execution
+
+Use `imagegen` for the actual image denoise/edit result.
+
+Do not create the denoised image with local filters, blur, sharpen, resize, C#, Python, PIL, ImageMagick, ffmpeg, screenshots, or manual compositing. Local tools may only be used after imagegen output exists, for file copying, format conversion, resizing, README updates, or packaging.
+
+If the target image is a local file path, load it with `view_image` first so it is visible in the conversation context, then invoke imagegen as an edit/generation task using that visible image as the edit target or reference.
+
+If imagegen is unavailable or fails, stop and tell the user that this skill requires imagegen. Do not silently fall back to local image processing for the denoise result.
 
 ## Purpose
 
