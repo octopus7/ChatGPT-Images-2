@@ -2,10 +2,12 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 
 const int VideoWidth = 1920;
 const int VideoHeight = 1080;
 const int FramesPerSecond = 30;
+const double TransitionDuration = 0.4;
 
 var root = FindRepositoryRoot(AppContext.BaseDirectory);
 var imageDir = Path.Combine(root, "Images");
@@ -37,12 +39,12 @@ using var clean = Image.FromFile(source.Clean);
 
 var stills = new List<StillSpec>
 {
-    SaveStill(Path.Combine(stillDir, "slide_00_thumbnail.jpg"), RenderThumbnail(original, rich, balanced, clean), 1.4),
-    SaveStill(Path.Combine(stillDir, "slide_01_intro.jpg"), RenderIntro(original, balanced), 1.8),
-    SaveStill(Path.Combine(stillDir, "slide_02_original.jpg"), RenderStageSlide(original, "SOURCE BASELINE", "Original Image", "Before the Codex skill is applied", "The original source image is used as the comparison baseline for every denoise detail level.", "01 / 04", Color.FromArgb(247, 194, 84), 0), 2.2),
-    SaveStill(Path.Combine(stillDir, "slide_03_detail_level_3.jpg"), RenderStageSlide(rich, "DETAIL LEVEL 3", "Rich Detail", "Maximum texture retention", "Preserves the rich rendering and material detail while selectively removing distracting dot-like noise.", "02 / 04", Color.FromArgb(97, 206, 255), 1), 2.2),
-    SaveStill(Path.Combine(stillDir, "slide_04_detail_level_2.jpg"), RenderStageSlide(balanced, "DETAIL LEVEL 2", "Balanced Detail", "The recommended default", "Keeps a detailed illustrated look while smoothing noisy micro-contrast, grain, and scattered highlights.", "03 / 04", Color.FromArgb(126, 225, 158), 2), 2.2),
-    SaveStill(Path.Combine(stillDir, "slide_05_detail_level_1.jpg"), RenderStageSlide(clean, "DETAIL LEVEL 1", "Clean Simplified", "Clearer forms with less visual noise", "Strongly reduces speckled noise and busy micro-texture while keeping the original composition readable.", "04 / 04", Color.FromArgb(255, 132, 118), 3), 2.2),
+    SaveStill(Path.Combine(stillDir, "slide_00_thumbnail.jpg"), RenderThumbnail(original, rich, balanced, clean), 2.8),
+    SaveStill(Path.Combine(stillDir, "slide_01_intro.jpg"), RenderIntro(original, balanced), 3.6),
+    SaveStill(Path.Combine(stillDir, "slide_02_original.jpg"), RenderStageSlide(original, "SOURCE BASELINE", "Original Image", "Before the Codex skill is applied", "The original source image is used as the comparison baseline for every denoise detail level.", "01 / 04", Color.FromArgb(247, 194, 84), 0), 1.4),
+    SaveStill(Path.Combine(stillDir, "slide_03_detail_level_3.jpg"), RenderStageSlide(rich, "DETAIL LEVEL 3", "Rich Detail", "Maximum texture retention", "Preserves the rich rendering and material detail while selectively removing distracting dot-like noise.", "02 / 04", Color.FromArgb(97, 206, 255), 1), 1.4),
+    SaveStill(Path.Combine(stillDir, "slide_04_detail_level_2.jpg"), RenderStageSlide(balanced, "DETAIL LEVEL 2", "Balanced Detail", "The recommended default", "Keeps a detailed illustrated look while smoothing noisy micro-contrast, grain, and scattered highlights.", "03 / 04", Color.FromArgb(126, 225, 158), 2), 1.4),
+    SaveStill(Path.Combine(stillDir, "slide_05_detail_level_1.jpg"), RenderStageSlide(clean, "DETAIL LEVEL 1", "Clean Simplified", "Clearer forms with less visual noise", "Strongly reduces speckled noise and busy micro-texture while keeping the original composition readable.", "04 / 04", Color.FromArgb(255, 132, 118), 3), 5.4),
 };
 
 RenderVideoWithFfmpeg(ffmpegPath, stills, outputPath);
@@ -176,36 +178,21 @@ static void RenderVideoWithFfmpeg(string ffmpegPath, IReadOnlyList<StillSpec> st
         File.Delete(outputPath);
     }
 
-    const double transition = 0.4;
-    var args = new List<string> { "-hide_banner", "-loglevel", "error", "-nostdin", "-y" };
-    foreach (var still in stills)
-    {
-        args.AddRange(new[] { "-loop", "1", "-t", still.Duration.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture), "-i", still.Path });
-    }
+    var frameDir = Path.Combine(Path.GetDirectoryName(outputPath)!, "tmp", "windshield-wipe-frames");
+    var totalDuration = RenderTimelineFrames(stills, frameDir);
 
-    var filterParts = new List<string>();
-    for (var i = 0; i < stills.Count; i++)
-    {
-        filterParts.Add($"[{i}:v]fps={FramesPerSecond},scale={VideoWidth}:{VideoHeight}:flags=lanczos,setsar=1,format=yuv420p[v{i}]");
-    }
-
-    var accumulated = stills[0].Duration;
-    var previous = "v0";
-    for (var i = 1; i < stills.Count; i++)
-    {
-        var offset = accumulated - transition;
-        var output = i == stills.Count - 1 ? "vout" : $"x{i}";
-        filterParts.Add($"[{previous}][v{i}]xfade=transition=slideleft:duration={transition.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)}:offset={offset.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)}[{output}]");
-        accumulated += stills[i].Duration - transition;
-        previous = output;
-    }
-
+    var args = new List<string>();
     args.AddRange(new[]
     {
-        "-filter_complex", string.Join(";", filterParts),
-        "-map", "[vout]",
-        "-t", "10",
+        "-hide_banner",
+        "-loglevel", "error",
+        "-nostdin",
+        "-y",
+        "-framerate", FramesPerSecond.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        "-i", Path.Combine(frameDir, "frame_%04d.jpg"),
+        "-t", totalDuration.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture),
         "-r", FramesPerSecond.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        "-vf", "format=yuv420p",
         "-c:v", "libx264",
         "-preset", "medium",
         "-crf", "18",
@@ -234,6 +221,148 @@ static void RenderVideoWithFfmpeg(string ffmpegPath, IReadOnlyList<StillSpec> st
     {
         throw new InvalidOperationException($"ffmpeg failed with exit code {process.ExitCode}.");
     }
+}
+
+static double RenderTimelineFrames(IReadOnlyList<StillSpec> stills, string frameDir)
+{
+    if (Directory.Exists(frameDir))
+    {
+        Directory.Delete(frameDir, true);
+    }
+
+    Directory.CreateDirectory(frameDir);
+
+    using var frameSet = new FrameBufferSet(stills.Select(still => still.Path));
+    var totalDuration = CalculateTotalDuration(stills);
+    var totalFrames = (int)Math.Round(FramesPerSecond * totalDuration);
+
+    for (var frameIndex = 0; frameIndex < totalFrames; frameIndex++)
+    {
+        var timestamp = frameIndex / (double)FramesPerSecond;
+        var plan = GetFramePlan(timestamp, stills);
+        var outputFrame = Path.Combine(frameDir, $"frame_{frameIndex:0000}.jpg");
+
+        if (!plan.IsTransition)
+        {
+            File.Copy(stills[plan.From].Path, outputFrame, true);
+            continue;
+        }
+
+        using var frame = plan.Style == TransitionStyle.Fade
+            ? BlendFade(frameSet[plan.From], frameSet[plan.To], plan.Progress)
+            : BlendWindshieldWipe(frameSet[plan.From], frameSet[plan.To], plan.Progress);
+        SaveJpeg(frame, outputFrame, 92L);
+    }
+
+    return totalDuration;
+}
+
+static double CalculateTotalDuration(IReadOnlyList<StillSpec> stills)
+{
+    return stills.Sum(still => still.Duration) - TransitionDuration * (stills.Count - 1);
+}
+
+static FramePlan GetFramePlan(double timestamp, IReadOnlyList<StillSpec> stills)
+{
+    var slideStart = 0.0;
+    for (var index = 0; index < stills.Count - 1; index++)
+    {
+        var transitionStart = slideStart + stills[index].Duration - TransitionDuration;
+        if (timestamp < transitionStart)
+        {
+            return new FramePlan(false, index, index, 0, TransitionStyle.None);
+        }
+
+        if (timestamp < transitionStart + TransitionDuration)
+        {
+            var style = index < 2 ? TransitionStyle.Fade : TransitionStyle.WindshieldWipe;
+            return new FramePlan(true, index, index + 1, (timestamp - transitionStart) / TransitionDuration, style);
+        }
+
+        slideStart = transitionStart;
+    }
+
+    return new FramePlan(false, stills.Count - 1, stills.Count - 1, 0, TransitionStyle.None);
+}
+
+static Bitmap BlendFade(FrameBuffer from, FrameBuffer to, double progress)
+{
+    var output = new byte[from.Bytes.Length];
+    var alpha = EaseInOutCubic(progress);
+
+    for (var offset = 0; offset < output.Length; offset++)
+    {
+        output[offset] = BlendByte(from.Bytes[offset], to.Bytes[offset], alpha);
+    }
+
+    return FrameBuffer.CreateBitmap(output);
+}
+
+static Bitmap BlendWindshieldWipe(FrameBuffer from, FrameBuffer to, double progress)
+{
+    var output = new byte[from.Bytes.Length];
+    var eased = EaseInOutCubic(progress);
+    var pivotX = VideoWidth * 0.18;
+    var pivotY = VideoHeight + 360.0;
+    var featherRadians = 0.11;
+    var glowRadians = 0.034;
+    var glowStrength = Math.Sin(Math.Clamp(progress, 0, 1) * Math.PI) * 0.5;
+    var glowColor = (B: 255.0, G: 226.0, R: 108.0);
+    var angles = new[]
+    {
+        Math.Atan2(0 - pivotY, 0 - pivotX),
+        Math.Atan2(0 - pivotY, VideoWidth - pivotX),
+        Math.Atan2(VideoHeight - pivotY, 0 - pivotX),
+        Math.Atan2(VideoHeight - pivotY, VideoWidth - pivotX),
+    };
+
+    var startAngle = angles.Min() - featherRadians * 2.2;
+    var endAngle = angles.Max() + featherRadians * 2.2;
+    var boundary = startAngle + (endAngle - startAngle) * eased;
+
+    for (var y = 0; y < VideoHeight; y++)
+    {
+        var dy = y - pivotY;
+        var row = y * FrameBuffer.RowBytes;
+        for (var x = 0; x < VideoWidth; x++)
+        {
+            var angle = Math.Atan2(dy, x - pivotX);
+            var alpha = SmoothStep((boundary + featherRadians - angle) / (featherRadians * 2.0));
+            var distance = Math.Abs(angle - boundary);
+            var glow = Math.Exp(-(distance * distance) / (2.0 * glowRadians * glowRadians)) * glowStrength;
+            var offset = row + x * 3;
+
+            output[offset] = ApplyGlow(BlendByte(from.Bytes[offset], to.Bytes[offset], alpha), glowColor.B, glow);
+            output[offset + 1] = ApplyGlow(BlendByte(from.Bytes[offset + 1], to.Bytes[offset + 1], alpha), glowColor.G, glow);
+            output[offset + 2] = ApplyGlow(BlendByte(from.Bytes[offset + 2], to.Bytes[offset + 2], alpha), glowColor.R, glow);
+        }
+    }
+
+    return FrameBuffer.CreateBitmap(output);
+}
+
+static byte ApplyGlow(byte value, double glowChannel, double glow)
+{
+    return (byte)Math.Clamp((int)Math.Round(value + (glowChannel - value) * glow), 0, 255);
+}
+
+static byte BlendByte(byte from, byte to, double alpha)
+{
+    return (byte)Math.Clamp((int)Math.Round(from + (to - from) * alpha), 0, 255);
+}
+
+static double SmoothStep(double value)
+{
+    value = Math.Clamp(value, 0, 1);
+    return value * value * (3 - 2 * value);
+}
+
+static double EaseInOutCubic(double value)
+{
+    value = Math.Clamp(value, 0, 1);
+    return value < 0.5
+        ? 4 * value * value * value
+        : 1 - Math.Pow(-2 * value + 2, 3) / 2;
 }
 
 static Bitmap CreateCanvas()
@@ -454,3 +583,124 @@ record SourceImages(string Original, string Rich, string Balanced, string Clean)
 }
 
 record StillSpec(string Path, double Duration);
+
+readonly record struct FramePlan(bool IsTransition, int From, int To, double Progress, TransitionStyle Style);
+
+enum TransitionStyle
+{
+    None,
+    Fade,
+    WindshieldWipe,
+}
+
+sealed class FrameBufferSet : IDisposable
+{
+    private readonly List<FrameBuffer> frames;
+
+    public FrameBufferSet(IEnumerable<string> paths)
+    {
+        frames = paths.Select(FrameBuffer.Load).ToList();
+    }
+
+    public FrameBuffer this[int index] => frames[index];
+
+    public void Dispose()
+    {
+        foreach (var frame in frames)
+        {
+            frame.Dispose();
+        }
+    }
+}
+
+sealed class FrameBuffer : IDisposable
+{
+    private const int Width = 1920;
+    private const int Height = 1080;
+    public const int RowBytes = Width * 3;
+
+    private FrameBuffer(Bitmap bitmap, byte[] bytes)
+    {
+        Bitmap = bitmap;
+        Bytes = bytes;
+    }
+
+    public Bitmap Bitmap { get; }
+    public byte[] Bytes { get; }
+
+    public static FrameBuffer Load(string path)
+    {
+        using var source = Image.FromFile(path);
+        var bitmap = new Bitmap(Width, Height, PixelFormat.Format24bppRgb);
+        bitmap.SetResolution(96, 96);
+
+        using (var graphics = Graphics.FromImage(bitmap))
+        {
+            graphics.CompositingQuality = CompositingQuality.HighQuality;
+            graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            graphics.DrawImage(source, new Rectangle(0, 0, Width, Height));
+        }
+
+        return new FrameBuffer(bitmap, CopyBytes(bitmap));
+    }
+
+    public static Bitmap CreateBitmap(byte[] bytes)
+    {
+        var bitmap = new Bitmap(Width, Height, PixelFormat.Format24bppRgb);
+        bitmap.SetResolution(96, 96);
+        var data = bitmap.LockBits(new Rectangle(0, 0, Width, Height), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+        try
+        {
+            if (data.Stride == RowBytes)
+            {
+                Marshal.Copy(bytes, 0, data.Scan0, bytes.Length);
+            }
+            else
+            {
+                for (var y = 0; y < Height; y++)
+                {
+                    Marshal.Copy(bytes, y * RowBytes, IntPtr.Add(data.Scan0, y * data.Stride), RowBytes);
+                }
+            }
+        }
+        finally
+        {
+            bitmap.UnlockBits(data);
+        }
+
+        return bitmap;
+    }
+
+    public void Dispose()
+    {
+        Bitmap.Dispose();
+    }
+
+    private static byte[] CopyBytes(Bitmap bitmap)
+    {
+        var bytes = new byte[RowBytes * Height];
+        var data = bitmap.LockBits(new Rectangle(0, 0, Width, Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+        try
+        {
+            if (data.Stride == RowBytes)
+            {
+                Marshal.Copy(data.Scan0, bytes, 0, bytes.Length);
+            }
+            else
+            {
+                for (var y = 0; y < Height; y++)
+                {
+                    Marshal.Copy(IntPtr.Add(data.Scan0, y * data.Stride), bytes, y * RowBytes, RowBytes);
+                }
+            }
+        }
+        finally
+        {
+            bitmap.UnlockBits(data);
+        }
+
+        return bytes;
+    }
+}
