@@ -4,7 +4,7 @@
 
 <table>
   <tr>
-    <td width="50%" align="center">
+    <td width="50%" align="center" valign="top">
       <img src="Images/ed_splash_denoise_detail_1_clean_simplified.jpg" alt="Detail Level 1 - Clean Simplified" width="100%">
       <br>
       <strong>Detail Level 1 - Clean Simplified</strong><br>
@@ -12,7 +12,7 @@
       점 형태의 노이즈와 복잡한 미세 질감을 강하게 줄이면서 원본 구도를 읽기 쉽게 유지합니다.<br>
       点状のノイズと複雑な微細テクスチャを大きく抑えながら、元の構図を読み取りやすく保ちます。
     </td>
-    <td width="50%" align="center">
+    <td width="50%" align="center" valign="top">
       <img src="Images/ed_splash_denoise_detail_2_balanced.jpg" alt="Detail Level 2 - Balanced Detail" width="100%">
       <br>
       <strong>Detail Level 2 - Balanced Detail</strong><br>
@@ -22,7 +22,7 @@
     </td>
   </tr>
   <tr>
-    <td width="50%" align="center">
+    <td width="50%" align="center" valign="top">
       <img src="Images/ed_splash_denoise_detail_3_rich.jpg" alt="Detail Level 3 - Rich Detail" width="100%">
       <br>
       <strong>Detail Level 3 - Rich Detail</strong><br>
@@ -30,7 +30,7 @@
       세밀한 렌더링은 그대로 유지하고 방해되는 점 형태의 노이즈만 선택적으로 제거합니다.<br>
       細密なレンダリングはそのまま保ち、邪魔になる点状ノイズだけを選択的に取り除きます。
     </td>
-    <td width="50%" align="center">
+    <td width="50%" align="center" valign="top">
       <img src="Images/EdSplash.jpg" alt="Original Image" width="100%">
       <br>
       <strong>Original Image</strong><br>
