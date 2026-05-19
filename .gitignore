@@ -1,0 +1,34 @@
+# Local tools and generated runtime state
+/.local-tools/
+/.dotnet-home/
+/Video/tmp/
+
+# .NET build outputs
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+
+# .NET test and coverage outputs
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+coverage.cobertura.xml
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+
+# Visual Studio and Rider
+.vs/
+.idea/
+*.sln.iml
