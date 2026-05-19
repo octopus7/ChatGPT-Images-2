@@ -55,6 +55,11 @@ This repository includes a Codex skill:<br>
 
 `skills/image-prompt-and-simplify/SKILL.md`
 
+Setup and install notes:
+
+- Project-local use: [AGENTS.md](AGENTS.md)
+- Global Codex skills home install: [docs/codex-skill-install.md](docs/codex-skill-install.md)
+
 Use this skill in Codex when the user provides an image and wants a cleaner, simpler, or detail-controlled version while preserving the original scene identity.<br>
 사용자가 이미지를 제공하고 원본 장면의 정체성을 유지한 채 더 깔끔하거나 단순하거나 디테일이 조절된 버전을 원할 때 Codex에서 이 스킬을 사용합니다.<br>
 ユーザーが画像を提供し、元のシーンの同一性を保ちながら、よりクリーン、シンプル、またはディテールを制御したバージョンを求める場合に Codex でこのスキルを使用します。
@@ -75,6 +80,8 @@ Example Codex request:
 ```text
 Use the image-prompt-and-simplify skill on this image with detail_level: 2.
 ```
+
+![Codex skill usage prompt](Images/capture.png)
 
 You can also use this workflow without Codex. Attach `skills/image-prompt-and-simplify/SKILL.md` to ChatGPT, ask it to read and follow the skill instructions, then attach the image you want to transform. ChatGPT can then apply the same prompt-building and detail-level workflow.<br>
 Codex가 없어도 이 워크플로우를 사용할 수 있습니다. ChatGPT에 `skills/image-prompt-and-simplify/SKILL.md` 파일을 첨부하고 스킬 내용을 읽고 따르도록 요청한 뒤, 바꿀 이미지를 첨부하면 됩니다. 그러면 ChatGPT도 같은 프롬프트 작성 및 디테일 레벨 워크플로우로 처리할 수 있습니다.<br>
