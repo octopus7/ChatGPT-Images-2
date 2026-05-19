@@ -1,5 +1,11 @@
 # GPT-Image2
 
+<p align="center">
+  <a href="https://youtu.be/CdE4gloKKsw">
+    <img src="Video/youtube-thumbnail-2stage-original-denoised-480p-play.jpg" alt="Watch ChatGPT Images 2.0: Sparkly Artifacts Fixed on YouTube" width="854">
+  </a>
+</p>
+
 ## Image Detail Denoise Results
 
 <table>
